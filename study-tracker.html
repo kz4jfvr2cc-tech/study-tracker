@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>StudyLog — 勉強時間管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg0: #0D1117;
+    --bg1: #161B22;
+    --bg2: #21262D;
+    --bg3: #30363D;
+    --accent: #58A6FF;
+    --accent-dim: rgba(88,166,255,0.15);
+    --green: #3FB950;
+    --green-dim: rgba(63,185,80,0.15);
+    --red: #F78166;
+    --yellow: #E3B341;
+    --text-hi: #E6EDF3;
+    --text-md: #C9D1D9;
+    --text-lo: #8B949E;
+    --border: #30363D;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font-ui: 'Noto Sans JP', sans-serif;
+    --font-data: 'JetBrains Mono', monospace;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg0);
+    color: var(--text-md);
+    font-family: var(--font-ui);
+    min-height: 100vh;
+    padding-bottom: calc(72px + var(--safe-bottom));
+    overscroll-behavior: none;
+  }
+
+  /* ── Nav ── */
+  .tab-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg1);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding-bottom: var(--safe-bottom);
+    z-index: 100;
+  }
+  .tab-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 10px 4px 8px; gap: 4px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-lo); font-family: var(--font-ui);
+    font-size: 10px; font-weight: 500;
+    transition: color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn svg { width: 22px; height: 22px; }
+
+  /* ── Pages ── */
+  .page { display: none; padding: 0 0 16px; }
+  .page.active { display: block; }
+
+  .page-header {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--bg0);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 16px 12px;
+  }
+  .page-title {
+    font-size: 20px; font-weight: 700; color: var(--text-hi);
+    letter-spacing: -0.3px;
+  }
+  .page-subtitle { font-size: 12px; color: var(--text-lo); margin-top: 2px; }
+
+  .content { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .card-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-lo); margin-bottom: 10px;
+  }
+
+  /* ── Dashboard stats ── */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card {
+    background: var(--bg1); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 12px;
+  }
+  .stat-label { font-size: 11px; color: var(--text-lo); font-weight: 500; }
+  .stat-value {
+    font-family: var(--font-data); font-size: 26px; font-weight: 700;
+    color: var(--text-hi); line-height: 1.1; margin-top: 4px;
+  }
+  .stat-unit { font-size: 13px; color: var(--text-lo); font-weight: 400; }
+  .stat-card.accent-card { border-color: var(--accent); background: var(--accent-dim); }
+  .stat-card.accent-card .stat-value { color: var(--accent); }
+
+  /* ── Goal progress ── */
+  .goal-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .goal-pct { font-family: var(--font-data); font-size: 20px; font-weight: 700; color: var(--green); }
+  .progress-bar-bg { height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; }
+  .progress-bar-fill {
+    height: 100%; background: linear-gradient(90deg, var(--green), #58A6FF);
+    border-radius: 99px; transition: width .6s cubic-bezier(.22,1,.36,1);
+  }
+  .goal-meta { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--text-lo); }
+
+  /* ── Record form ── */
+  .subject-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .subj-btn {
+    background: var(--bg2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 4px;
+    font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+    color: var(--text-md); cursor: pointer; text-align: center;
+    transition: all .15s; line-height: 1.3;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .subj-btn:active { transform: scale(.95); }
+  .subj-btn.selected {
+    background: var(--accent-dim); border-color: var(--accent);
+    color: var(--accent); font-weight: 700;
+  }
+
+  /* ── Time input ── */
+  .time-display {
+    text-align: center; padding: 20px 0 8px;
+    font-family: var(--font-data); font-size: 56px; font-weight: 700;
+    color: var(--text-hi); letter-spacing: -2px; line-height: 1;
+  }
+  .time-display span { font-size: 20px; color: var(--text-lo); font-weight: 400; }
+  .time-slider {
+    width: 100%; margin: 8px 0;
+    -webkit-appearance: none; appearance: none;
+    height: 6px; background: var(--bg3); border-radius: 99px; outline: none;
+    cursor: pointer;
+  }
+  .time-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 24px; height: 24px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 0 4px rgba(88,166,255,.25);
+  }
+  .quick-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+  .quick-btn {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 99px; padding: 6px 14px;
+    font-family: var(--font-data); font-size: 13px; font-weight: 600;
+    color: var(--text-md); cursor: pointer; transition: all .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .quick-btn:active { transform: scale(.92); }
+  .quick-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+  /* ── Date ── */
+  .date-input {
+    width: 100%; padding: 12px 14px;
+    background: var(--bg2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-hi);
+    font-family: var(--font-ui); font-size: 15px; outline: none;
+    transition: border-color .15s;
+    color-scheme: dark;
+  }
+  .date-input:focus { border-color: var(--accent); }
+
+  /* ── Memo ── */
+  .memo-input {
+    width: 100%; padding: 12px 14px; min-height: 70px; resize: none;
+    background: var(--bg2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-hi);
+    font-family: var(--font-ui); font-size: 14px; outline: none;
+    transition: border-color .15s;
+  }
+  .memo-input:focus { border-color: var(--accent); }
+
+  /* ── Submit btn ── */
+  .submit-btn {
+    width: 100%; padding: 16px;
+    background: var(--accent); border: none; border-radius: var(--radius);
+    font-family: var(--font-ui); font-size: 16px; font-weight: 700;
+    color: #0D1117; cursor: pointer; transition: all .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .submit-btn:active { transform: scale(.97); opacity: .85; }
+  .submit-btn:disabled { background: var(--bg3); color: var(--text-lo); cursor: not-allowed; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px);
+    background: var(--green); color: #0D1117;
+    padding: 12px 20px; border-radius: 99px;
+    font-weight: 700; font-size: 14px;
+    transition: transform .3s cubic-bezier(.22,1,.36,1);
+    z-index: 200; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Chart canvas ── */
+  canvas { display: block; width: 100% !important; }
+
+  /* ── Ranking ── */
+  .rank-list { display: flex; flex-direction: column; gap: 8px; }
+  .rank-item { display: flex; align-items: center; gap: 10px; }
+  .rank-num {
+    font-family: var(--font-data); font-size: 12px; font-weight: 700;
+    color: var(--text-lo); width: 20px; text-align: center; flex-shrink: 0;
+  }
+  .rank-num.gold { color: #F1C40F; }
+  .rank-num.silver { color: #BDC3C7; }
+  .rank-num.bronze { color: #CD7F32; }
+  .rank-bar-wrap { flex: 1; }
+  .rank-name { font-size: 13px; font-weight: 500; color: var(--text-hi); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .rank-name span { font-family: var(--font-data); color: var(--text-lo); font-size: 12px; }
+  .rank-bar-bg { height: 6px; background: var(--bg2); border-radius: 99px; overflow: hidden; }
+  .rank-bar-fill { height: 100%; border-radius: 99px; transition: width .5s cubic-bezier(.22,1,.36,1); }
+
+  /* ── History log ── */
+  .log-list { display: flex; flex-direction: column; gap: 8px; }
+  .log-item {
+    background: var(--bg2); border-radius: var(--radius-sm);
+    padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+    position: relative;
+  }
+  .log-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .log-info { flex: 1; min-width: 0; }
+  .log-subj { font-size: 14px; font-weight: 700; color: var(--text-hi); }
+  .log-meta { font-size: 11px; color: var(--text-lo); margin-top: 2px; }
+  .log-time { font-family: var(--font-data); font-size: 18px; font-weight: 700; color: var(--text-hi); }
+  .log-min { font-size: 11px; color: var(--text-lo); }
+  .log-del {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-lo); padding: 4px; border-radius: 4px;
+    font-size: 16px; transition: color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .log-del:hover { color: var(--red); }
+
+  .empty-state {
+    text-align: center; padding: 40px 20px;
+    color: var(--text-lo); font-size: 14px;
+  }
+  .empty-state div { font-size: 40px; margin-bottom: 10px; }
+
+  /* ── Goal setting ── */
+  .goal-input {
+    width: 100%; padding: 12px 14px;
+    background: var(--bg2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-hi);
+    font-family: var(--font-data); font-size: 20px; font-weight: 700;
+    outline: none; text-align: center; transition: border-color .15s;
+  }
+  .goal-input:focus { border-color: var(--accent); }
+
+  .section-divider { height: 1px; background: var(--border); }
+
+  .chart-wrap { position: relative; }
+
+  /* Pie legend */
+  .pie-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; }
+  .pie-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-md); }
+  .pie-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* scrollable log */
+  .log-scroll { max-height: 400px; overflow-y: auto; }
+  .log-scroll::-webkit-scrollbar { width: 4px; }
+  .log-scroll::-webkit-scrollbar-track { background: transparent; }
+  .log-scroll::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast">✓ 記録しました</div>
+
+<!-- ════════════════ PAGE: DASHBOARD ════════════════ -->
+<div id="page-home" class="page active">
+  <div class="page-header">
+    <div class="page-title">StudyLog 📚</div>
+    <div class="page-subtitle" id="today-date"></div>
+  </div>
+  <div class="content">
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card accent-card">
+        <div class="stat-label">今日</div>
+        <div class="stat-value" id="stat-today">0<span class="stat-unit">分</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今週</div>
+        <div class="stat-value" id="stat-week">0<span class="stat-unit">分</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今月</div>
+        <div class="stat-value" id="stat-month">0<span class="stat-unit">分</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">合計</div>
+        <div class="stat-value" id="stat-total">0<span class="stat-unit">時間</span></div>
+      </div>
+    </div>
+
+    <!-- Goal -->
+    <div class="card">
+      <div class="card-label">目標達成率（今日）</div>
+      <div class="goal-row">
+        <div style="font-size:13px;color:var(--text-lo)">目標: <span id="goal-display" style="color:var(--text-md);font-family:var(--font-data)">120</span>分</div>
+        <div class="goal-pct" id="goal-pct">0%</div>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="goal-bar" style="width:0%"></div>
+      </div>
+      <div class="goal-meta">
+        <span id="goal-done">0分 完了</span>
+        <span id="goal-remain">残り 120分</span>
+      </div>
+    </div>
+
+    <!-- Today log -->
+    <div class="card">
+      <div class="card-label">今日の記録</div>
+      <div id="today-log" class="log-list"></div>
+    </div>
+
+    <!-- Weekly chart -->
+    <div class="card">
+      <div class="card-label">今週の勉強時間</div>
+      <div class="chart-wrap">
+        <canvas id="chart-week" height="160"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ PAGE: RECORD ════════════════ -->
+<div id="page-record" class="page">
+  <div class="page-header">
+    <div class="page-title">記録する</div>
+    <div class="page-subtitle">今日の勉強を入力してください</div>
+  </div>
+  <div class="content">
+    <!-- Subject -->
+    <div class="card">
+      <div class="card-label">科目を選択</div>
+      <div class="subject-grid" id="subject-grid"></div>
+    </div>
+
+    <!-- Time -->
+    <div class="card">
+      <div class="card-label">勉強時間</div>
+      <div class="time-display" id="time-display">
+        30<span>分</span>
+      </div>
+      <input type="range" class="time-slider" id="time-slider" min="5" max="300" value="30" step="5">
+      <div class="quick-btns" id="quick-btns">
+        <button class="quick-btn" data-min="15">15分</button>
+        <button class="quick-btn active" data-min="30">30分</button>
+        <button class="quick-btn" data-min="45">45分</button>
+        <button class="quick-btn" data-min="60">1時間</button>
+        <button class="quick-btn" data-min="90">90分</button>
+        <button class="quick-btn" data-min="120">2時間</button>
+      </div>
+    </div>
+
+    <!-- Date -->
+    <div class="card">
+      <div class="card-label">日付</div>
+      <input type="date" class="date-input" id="record-date">
+    </div>
+
+    <!-- Memo -->
+    <div class="card">
+      <div class="card-label">メモ（任意）</div>
+      <textarea class="memo-input" id="record-memo" placeholder="今日学んだことや気づきを残そう..."></textarea>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitRecord()">記録する</button>
+  </div>
+</div>
+
+<!-- ════════════════ PAGE: ANALYTICS ════════════════ -->
+<div id="page-analytics" class="page">
+  <div class="page-header">
+    <div class="page-title">分析</div>
+    <div class="page-subtitle">学習データの傾向を確認</div>
+  </div>
+  <div class="content">
+    <!-- Pie -->
+    <div class="card">
+      <div class="card-label">科目別 割合</div>
+      <div class="chart-wrap" style="max-width:240px;margin:0 auto;">
+        <canvas id="chart-pie" width="240" height="240"></canvas>
+      </div>
+      <div class="pie-legend" id="pie-legend"></div>
+    </div>
+
+    <!-- Line -->
+    <div class="card">
+      <div class="card-label">直近14日 推移</div>
+      <div class="chart-wrap">
+        <canvas id="chart-line" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- Ranking -->
+    <div class="card">
+      <div class="card-label">科目別 累計ランキング</div>
+      <div class="rank-list" id="rank-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ PAGE: HISTORY ════════════════ -->
+<div id="page-history" class="page">
+  <div class="page-header">
+    <div class="page-title">履歴</div>
+    <div class="page-subtitle">全ての記録</div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="card-label">記録一覧</div>
+      <div class="log-scroll">
+        <div id="history-list" class="log-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ PAGE: SETTINGS ════════════════ -->
+<div id="page-settings" class="page">
+  <div class="page-header">
+    <div class="page-title">設定</div>
+    <div class="page-subtitle">目標と環境の設定</div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="card-label">1日の目標勉強時間（分）</div>
+      <input type="number" class="goal-input" id="goal-input" min="10" max="720" value="120" placeholder="120">
+      <div style="text-align:center;margin-top:8px;font-size:12px;color:var(--text-lo)">現在の目標: <span id="goal-current-display"></span>分</div>
+    </div>
+    <button class="submit-btn" onclick="saveGoal()">目標を保存</button>
+    <div class="section-divider"></div>
+    <div class="card" style="border-color:var(--red)">
+      <div class="card-label" style="color:var(--red)">データ管理</div>
+      <p style="font-size:13px;color:var(--text-lo);margin-bottom:12px">全ての記録を削除します。この操作は元に戻せません。</p>
+      <button class="submit-btn" style="background:var(--red);color:#fff" onclick="clearData()">全データを削除</button>
+    </div>
+    <div class="card" style="opacity:.7">
+      <div class="card-label">今後の予定</div>
+      <p style="font-size:13px;color:var(--text-lo)">🔐 Googleアカウントでのログイン<br>☁️ クラウド同期<br>📊 PDFレポート出力</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tab bar ── -->
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="navigate('home',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    ホーム
+  </button>
+  <button class="tab-btn" onclick="navigate('record',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+    </svg>
+    記録
+  </button>
+  <button class="tab-btn" onclick="navigate('analytics',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    分析
+  </button>
+  <button class="tab-btn" onclick="navigate('history',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    履歴
+  </button>
+  <button class="tab-btn" onclick="navigate('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+    </svg>
+    設定
+  </button>
+</nav>
+
+<script>
+// ══════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════
+const SUBJECTS = [
+  { name:'英語',   color:'#58A6FF' },
+  { name:'数学',   color:'#3FB950' },
+  { name:'現代文', color:'#F78166' },
+  { name:'古典',   color:'#E3B341' },
+  { name:'世界史', color:'#BC8CFF' },
+  { name:'公民',   color:'#FF7B72' },
+  { name:'地学',   color:'#56D364' },
+  { name:'保健',   color:'#79C0FF' },
+];
+
+function getSubjectColor(name) {
+  const s = SUBJECTS.find(s => s.name === name);
+  return s ? s.color : '#8B949E';
+}
+
+function loadRecords() {
+  try { return JSON.parse(localStorage.getItem('studylog_records') || '[]'); }
+  catch { return []; }
+}
+function saveRecords(records) {
+  localStorage.setItem('studylog_records', JSON.stringify(records));
+}
+function loadGoal() {
+  return parseInt(localStorage.getItem('studylog_goal') || '120', 10);
+}
+function saveGoalData(val) {
+  localStorage.setItem('studylog_goal', val);
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0,10);
+}
+function weekStart() {
+  const d = new Date(); d.setHours(0,0,0,0);
+  const day = d.getDay(); // 0=Sun
+  d.setDate(d.getDate() - day);
+  return d;
+}
+function monthStr() { return new Date().toISOString().slice(0,7); }
+
+// ══════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════
+function navigate(page, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  btn.classList.add('active');
+  if (page === 'home') renderHome();
+  if (page === 'analytics') renderAnalytics();
+  if (page === 'history') renderHistory();
+  if (page === 'settings') {
+    document.getElementById('goal-input').value = loadGoal();
+    document.getElementById('goal-current-display').textContent = loadGoal();
+  }
+}
+
+// ══════════════════════════════════════════
+//  RECORD PAGE
+// ══════════════════════════════════════════
+let selectedSubject = null;
+
+function initRecord() {
+  const grid = document.getElementById('subject-grid');
+  grid.innerHTML = '';
+  SUBJECTS.forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'subj-btn';
+    btn.textContent = s.name;
+    btn.style.setProperty('--subj-color', s.color);
+    btn.onclick = () => {
+      selectedSubject = s.name;
+      document.querySelectorAll('.subj-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      btn.style.borderColor = s.color;
+      btn.style.color = s.color;
+      btn.style.background = s.color + '22';
+    };
+    grid.appendChild(btn);
+  });
+
+  // Date default
+  document.getElementById('record-date').value = todayStr();
+
+  // Slider
+  const slider = document.getElementById('time-slider');
+  slider.addEventListener('input', () => {
+    const v = parseInt(slider.value);
+    updateTimeDisplay(v);
+    updateQuickBtns(v);
+  });
+
+  // Quick btns
+  document.querySelectorAll('.quick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const m = parseInt(btn.dataset.min);
+      document.getElementById('time-slider').value = m;
+      updateTimeDisplay(m);
+      updateQuickBtns(m);
+    });
+  });
+}
+
+function updateTimeDisplay(min) {
+  const el = document.getElementById('time-display');
+  if (min >= 60) {
+    const h = Math.floor(min/60), m = min%60;
+    el.innerHTML = h + '<span>時間</span>' + (m ? m + '<span>分</span>' : '');
+  } else {
+    el.innerHTML = min + '<span>分</span>';
+  }
+}
+
+function updateQuickBtns(val) {
+  document.querySelectorAll('.quick-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.min) === val);
+  });
+}
+
+function submitRecord() {
+  if (!selectedSubject) { alert('科目を選択してください'); return; }
+  const minutes = parseInt(document.getElementById('time-slider').value);
+  const date = document.getElementById('record-date').value || todayStr();
+  const memo = document.getElementById('record-memo').value.trim();
+
+  const records = loadRecords();
+  records.push({ id: Date.now(), date, subject: selectedSubject, minutes, memo });
+  saveRecords(records);
+
+  showToast('✓ 記録しました！');
+
+  // Reset
+  document.getElementById('record-memo').value = '';
+  document.querySelectorAll('.subj-btn').forEach(b => {
+    b.classList.remove('selected');
+    b.style.borderColor = '';
+    b.style.color = '';
+    b.style.background = '';
+  });
+  selectedSubject = null;
+  document.getElementById('time-slider').value = 30;
+  updateTimeDisplay(30);
+  updateQuickBtns(30);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ══════════════════════════════════════════
+//  HOME / DASHBOARD
+// ══════════════════════════════════════════
+function renderHome() {
+  const records = loadRecords();
+  const today = todayStr();
+  const ws = weekStart();
+  const month = monthStr();
+  const goal = loadGoal();
+
+  const todayMins = records.filter(r => r.date === today).reduce((a,r) => a+r.minutes, 0);
+  const weekMins  = records.filter(r => new Date(r.date) >= ws).reduce((a,r) => a+r.minutes, 0);
+  const monthMins = records.filter(r => r.date.startsWith(month)).reduce((a,r) => a+r.minutes, 0);
+  const totalMins = records.reduce((a,r) => a+r.minutes, 0);
+
+  document.getElementById('stat-today').innerHTML = todayMins + '<span class="stat-unit">分</span>';
+  document.getElementById('stat-week').innerHTML  = weekMins  + '<span class="stat-unit">分</span>';
+  document.getElementById('stat-month').innerHTML = monthMins + '<span class="stat-unit">分</span>';
+  document.getElementById('stat-total').innerHTML = (totalMins/60).toFixed(1) + '<span class="stat-unit">時間</span>';
+
+  // Goal
+  const pct = Math.min(100, Math.round(todayMins / goal * 100));
+  document.getElementById('goal-pct').textContent = pct + '%';
+  document.getElementById('goal-bar').style.width = pct + '%';
+  document.getElementById('goal-display').textContent = goal;
+  document.getElementById('goal-done').textContent = todayMins + '分 完了';
+  document.getElementById('goal-remain').textContent = '残り ' + Math.max(0, goal - todayMins) + '分';
+
+  // Today's date display
+  const d = new Date();
+  document.getElementById('today-date').textContent =
+    d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日（' +
+    ['日','月','火','水','木','金','土'][d.getDay()] + '）';
+
+  // Today log
+  const todayRecs = records.filter(r => r.date === today).reverse();
+  const tl = document.getElementById('today-log');
+  if (!todayRecs.length) {
+    tl.innerHTML = '<div class="empty-state"><div>📖</div>まだ今日の記録がありません</div>';
+  } else {
+    tl.innerHTML = '';
+    todayRecs.forEach(r => tl.appendChild(buildLogItem(r)));
+  }
+
+  // Weekly bar chart
+  renderWeekChart(records);
+}
+
+function buildLogItem(r) {
+  const el = document.createElement('div');
+  el.className = 'log-item';
+  const color = getSubjectColor(r.subject);
+  el.innerHTML = `
+    <div class="log-dot" style="background:${color}"></div>
+    <div class="log-info">
+      <div class="log-subj">${r.subject}</div>
+      <div class="log-meta">${r.date}${r.memo ? ' · ' + r.memo.slice(0,20) + (r.memo.length>20?'…':'') : ''}</div>
+    </div>
+    <div>
+      <div class="log-time">${r.minutes}<span class="log-min">分</span></div>
+    </div>
+    <button class="log-del" onclick="deleteRecord(${r.id})">✕</button>
+  `;
+  return el;
+}
+
+function deleteRecord(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  let records = loadRecords();
+  records = records.filter(r => r.id !== id);
+  saveRecords(records);
+  renderHome();
+  renderHistory();
+}
+
+// ══════════════════════════════════════════
+//  MINI CANVAS CHARTS
+// ══════════════════════════════════════════
+function renderWeekChart(records) {
+  const canvas = document.getElementById('chart-week');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth;
+  const H = 160;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  // Build 7-day data
+  const days = [];
+  for (let i=6; i>=0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const str = d.toISOString().slice(0,10);
+    const mins = records.filter(r => r.date === str).reduce((a,r) => a+r.minutes, 0);
+    days.push({ label: ['日','月','火','水','木','金','土'][d.getDay()], mins });
+  }
+
+  const maxVal = Math.max(...days.map(d=>d.mins), 60);
+  const PAD = { t:10, r:10, b:30, l:36 };
+  const cw = W - PAD.l - PAD.r;
+  const ch = H - PAD.t - PAD.b;
+  const barW = cw / 7 * 0.55;
+  const gap  = cw / 7;
+
+  ctx.clearRect(0,0,W,H);
+
+  // Grid lines
+  for (let i=0; i<=3; i++) {
+    const y = PAD.t + ch - (ch * i/3);
+    ctx.strokeStyle = '#30363D';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W-PAD.r, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#8B949E'; ctx.font = '10px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxVal*i/3), PAD.l-4, y+4);
+  }
+
+  const today = new Date().getDay();
+  days.forEach((d,i) => {
+    const x = PAD.l + gap*i + gap/2 - barW/2;
+    const barH = d.mins > 0 ? Math.max(4, ch * d.mins/maxVal) : 0;
+    const y = PAD.t + ch - barH;
+    const isToday = i === 6;
+
+    // Bar
+    const grad = ctx.createLinearGradient(0, y, 0, PAD.t+ch);
+    grad.addColorStop(0, isToday ? '#58A6FF' : '#3FB950');
+    grad.addColorStop(1, isToday ? '#58A6FF44' : '#3FB95044');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, barH, [4,4,2,2]);
+    ctx.fill();
+
+    // Label
+    ctx.fillStyle = isToday ? '#58A6FF' : '#8B949E';
+    ctx.font = isToday ? 'bold 11px Noto Sans JP' : '11px Noto Sans JP';
+    ctx.textAlign = 'center';
+    ctx.fillText(d.label, PAD.l + gap*i + gap/2, H-8);
+  });
+}
+
+// ══════════════════════════════════════════
+//  ANALYTICS
+// ══════════════════════════════════════════
+function renderAnalytics() {
+  const records = loadRecords();
+
+  // Pie
+  renderPie(records);
+
+  // Line (14 days)
+  renderLine(records);
+
+  // Ranking
+  renderRanking(records);
+}
+
+function renderPie(records) {
+  const totals = {};
+  records.forEach(r => { totals[r.subject] = (totals[r.subject]||0) + r.minutes; });
+  const entries = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  const total = entries.reduce((a,e)=>a+e[1],0);
+
+  const canvas = document.getElementById('chart-pie');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 240*dpr; canvas.height = 240*dpr;
+  canvas.style.width='240px'; canvas.style.height='240px';
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,240,240);
+
+  if (!total) {
+    ctx.fillStyle='#8B949E'; ctx.font='14px Noto Sans JP';
+    ctx.textAlign='center'; ctx.fillText('データなし',120,125);
+    return;
+  }
+
+  let angle = -Math.PI/2;
+  const CX=120, CY=120, R=100, INNER=55;
+  entries.forEach(([subj,mins]) => {
+    const slice = (mins/total)*Math.PI*2;
+    const color = getSubjectColor(subj);
+    ctx.beginPath();
+    ctx.moveTo(CX,CY);
+    ctx.arc(CX,CY,R,angle,angle+slice);
+    ctx.closePath();
+    ctx.fillStyle=color;
+    ctx.fill();
+    ctx.strokeStyle='#0D1117'; ctx.lineWidth=2;
+    ctx.stroke();
+    angle += slice;
+  });
+
+  // Donut hole
+  ctx.beginPath(); ctx.arc(CX,CY,INNER,0,Math.PI*2);
+  ctx.fillStyle='#161B22'; ctx.fill();
+
+  // Center text
+  ctx.fillStyle='#E6EDF3'; ctx.font='bold 20px JetBrains Mono';
+  ctx.textAlign='center'; ctx.fillText(Math.round(total/60)+'h', CX, CY-2);
+  ctx.fillStyle='#8B949E'; ctx.font='11px Noto Sans JP';
+  ctx.fillText('合計', CX, CY+16);
+
+  // Legend
+  const legend = document.getElementById('pie-legend');
+  legend.innerHTML='';
+  entries.forEach(([subj,mins]) => {
+    const div=document.createElement('div'); div.className='pie-legend-item';
+    div.innerHTML=`<div class="pie-legend-dot" style="background:${getSubjectColor(subj)}"></div>${subj} <span style="color:var(--text-lo);font-size:11px;margin-left:2px">${Math.round(mins/60*10)/10}h</span>`;
+    legend.appendChild(div);
+  });
+}
+
+function renderLine(records) {
+  const canvas = document.getElementById('chart-line');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio||1;
+  const W = canvas.parentElement.clientWidth;
+  const H = 180;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+
+  const days=[];
+  for(let i=13;i>=0;i--) {
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const str=d.toISOString().slice(0,10);
+    const mins=records.filter(r=>r.date===str).reduce((a,r)=>a+r.minutes,0);
+    days.push({label:str.slice(5),mins});
+  }
+
+  const maxVal=Math.max(...days.map(d=>d.mins),30);
+  const PAD={t:16,r:10,b:30,l:36};
+  const cw=W-PAD.l-PAD.r, ch=H-PAD.t-PAD.b;
+
+  // Grid
+  for(let i=0;i<=3;i++){
+    const y=PAD.t+ch-(ch*i/3);
+    ctx.strokeStyle='#30363D'; ctx.lineWidth=1; ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(W-PAD.r,y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#8B949E'; ctx.font='10px JetBrains Mono';
+    ctx.textAlign='right';
+    ctx.fillText(Math.round(maxVal*i/3), PAD.l-4, y+4);
+  }
+
+  // Area fill
+  const pts=days.map((d,i)=>({
+    x: PAD.l + (cw/(days.length-1))*i,
+    y: PAD.t + ch - (ch*d.mins/maxVal)
+  }));
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, PAD.t+ch);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length-1].x, PAD.t+ch);
+  ctx.closePath();
+  const grad=ctx.createLinearGradient(0,PAD.t,0,PAD.t+ch);
+  grad.addColorStop(0,'rgba(88,166,255,.3)');
+  grad.addColorStop(1,'rgba(88,166,255,.02)');
+  ctx.fillStyle=grad; ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle='#58A6FF'; ctx.lineWidth=2; ctx.lineJoin='round';
+  ctx.setLineDash([]); ctx.stroke();
+
+  // Dots
+  pts.forEach((p,i)=>{
+    if(days[i].mins>0){
+      ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2);
+      ctx.fillStyle='#58A6FF'; ctx.fill();
+    }
+  });
+
+  // X labels (every 2)
+  days.forEach((d,i)=>{
+    if(i%2===0){
+      ctx.fillStyle='#8B949E'; ctx.font='10px Noto Sans JP';
+      ctx.textAlign='center';
+      ctx.fillText(d.label, pts[i].x, H-8);
+    }
+  });
+}
+
+function renderRanking(records) {
+  const totals={};
+  records.forEach(r=>{totals[r.subject]=(totals[r.subject]||0)+r.minutes;});
+  const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  const max=sorted[0]?sorted[0][1]:1;
+
+  const el=document.getElementById('rank-list');
+  if(!sorted.length){
+    el.innerHTML='<div class="empty-state"><div>📊</div>データなし</div>'; return;
+  }
+  el.innerHTML='';
+  sorted.forEach(([subj,mins],i)=>{
+    const rank=i+1;
+    const cls=rank===1?'gold':rank===2?'silver':rank===3?'bronze':'';
+    const color=getSubjectColor(subj);
+    const div=document.createElement('div'); div.className='rank-item';
+    div.innerHTML=`
+      <div class="rank-num ${cls}">${rank}</div>
+      <div class="rank-bar-wrap">
+        <div class="rank-name">${subj}<span>${Math.round(mins/60*10)/10}h（${mins}分）</span></div>
+        <div class="rank-bar-bg">
+          <div class="rank-bar-fill" style="width:${Math.round(mins/max*100)}%;background:${color}"></div>
+        </div>
+      </div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+// ══════════════════════════════════════════
+//  HISTORY
+// ══════════════════════════════════════════
+function renderHistory() {
+  const records = [...loadRecords()].reverse();
+  const el = document.getElementById('history-list');
+  if(!records.length){
+    el.innerHTML='<div class="empty-state"><div>📖</div>まだ記録がありません<br><small style="margin-top:8px;display:block">「記録」タブから入力してください</small></div>';
+    return;
+  }
+  el.innerHTML='';
+  records.forEach(r => el.appendChild(buildLogItem(r)));
+}
+
+// ══════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════
+function saveGoal() {
+  const v = parseInt(document.getElementById('goal-input').value);
+  if(isNaN(v)||v<10){alert('10分以上で入力してください');return;}
+  saveGoalData(v);
+  document.getElementById('goal-current-display').textContent = v;
+  showToast('✓ 目標を保存しました');
+}
+
+function clearData() {
+  if(!confirm('全データを削除しますか？\nこの操作は元に戻せません。')) return;
+  localStorage.removeItem('studylog_records');
+  showToast('データを削除しました');
+  renderHome();
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+initRecord();
+renderHome();
+</script>
+</body>
+</html>
